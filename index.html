@@ -1991,19 +1991,26 @@ let state = {
 };
 
 // ============================================================
-// STORAGE LAYER - طبقة تخزين هجينة موثوقة
+// STORAGE LAYER - طبقة تخزين سحابية مع نسخة محلية احتياطية
 // ============================================================
-// النظام يستخدم:
-// 1) localStorage للبيانات الصغيرة (المستخدمون، بيانات المنتجات، السجل)
-// 2) IndexedDB للصور (لأنها قد تكون كبيرة)
-// 3) محاولة مزامنة سحابية اختيارية صامتة (إن توفرت)
+// النظام يعمل بالأولوية:
+// 1) السحابة (window.storage مع shared:true) — مزامنة حقيقية بين الأجهزة
+// 2) localStorage كنسخة احتياطية (في حالة انقطاع السحابة)
+// 3) IndexedDB للصور محلياً فقط (بسبب حجمها الكبير)
+// 4) مزامنة دورية تلقائية كل 20 ثانية
 // ============================================================
 
 const LS_KEYS = {
-  users: 'pb_users_v2',
-  products: 'pb_products_v2',
-  activity: 'pb_activity_v2',
-  images: 'pb_images_v2'
+  users: 'pb_users_v3',
+  products: 'pb_products_v3',
+  activity: 'pb_activity_v3'
+};
+
+const CLOUD_KEYS = {
+  users: 'pb_cloud_users',
+  products: 'pb_cloud_products',
+  activity: 'pb_cloud_activity',
+  imgPrefix: 'pb_cloud_img_'
 };
 
 // ---------- IndexedDB للصور ----------
@@ -2080,92 +2087,145 @@ function lsSet(key, value) {
   }
 }
 
-// ---------- محاولة سحابية صامتة (fire-and-forget) ----------
-async function cloudTry(fn) {
+// ---------- CLOUD helpers (آمنة) ----------
+const CLOUD_AVAILABLE = (typeof window.storage !== 'undefined');
+
+// حالة الاتصال السحابي — تُعرض للمستخدم
+let _cloudHealthy = CLOUD_AVAILABLE;
+
+async function cloudGet(key) {
+  if (!CLOUD_AVAILABLE) return null;
   try {
-    if (typeof window.storage === 'undefined') return;
-    await fn();
+    const r = await window.storage.get(key, true);
+    // التحقق بعناية من صيغة الاستجابة
+    if (!r) return null;
+    if (typeof r.value !== 'string') return null;
+    _cloudHealthy = true;
+    return JSON.parse(r.value);
   } catch (e) {
-    // فشل صامت — localStorage هو المرجع الأساسي
-    console.debug('cloud sync skipped:', e?.message || e);
+    _cloudHealthy = false;
+    console.debug('cloudGet failed for', key, e?.message);
+    return null;
+  }
+}
+
+async function cloudSet(key, value) {
+  if (!CLOUD_AVAILABLE) return false;
+  try {
+    const json = JSON.stringify(value);
+    // الحد الأقصى 5 ميجا لكل مفتاح
+    if (json.length > 4.5 * 1024 * 1024) {
+      console.warn('cloud value too big for key:', key);
+      return false;
+    }
+    await window.storage.set(key, json, true);
+    _cloudHealthy = true;
+    return true;
+  } catch (e) {
+    _cloudHealthy = false;
+    console.debug('cloudSet failed for', key, e?.message);
+    return false;
   }
 }
 
 // ---------- STORAGE API ----------
 const STORAGE = {
+  // جلب المستخدمين: السحابة أولاً ثم المحلي
   async getUsers() {
+    const cloud = await cloudGet(CLOUD_KEYS.users);
+    if (cloud && Array.isArray(cloud) && cloud.length > 0) {
+      lsSet(LS_KEYS.users, cloud); // كاش محلي
+      return cloud;
+    }
     return lsGet(LS_KEYS.users);
   },
   async setUsers(users) {
-    const ok = lsSet(LS_KEYS.users, users);
-    // مزامنة سحابية اختيارية
-    cloudTry(() => window.storage.set(LS_KEYS.users, JSON.stringify(users), true));
-    return ok;
+    lsSet(LS_KEYS.users, users); // محلي فوراً
+    await cloudSet(CLOUD_KEYS.users, users); // سحابي
+    return true;
   },
 
+  // جلب المنتجات: السحابة أولاً للـ metadata + الصور من IndexedDB أو السحابة
   async getProducts() {
-    const list = lsGet(LS_KEYS.products);
-    if (!list) return null;
-    // استرجاع الصور من IndexedDB
+    let list = await cloudGet(CLOUD_KEYS.products);
+    let fromCloud = !!list;
+
+    if (!list) {
+      list = lsGet(LS_KEYS.products);
+    } else {
+      // كاش محلي
+      lsSet(LS_KEYS.products, list);
+    }
+
+    if (!list || !Array.isArray(list)) return [];
+
+    // استرجاع الصور
     for (const p of list) {
-      if (p._hasImage) {
+      if (!p.image && p._hasImage) {
+        // محاولة من IndexedDB أولاً (أسرع)
         try {
-          const img = await idbGet('img_' + p.id);
-          if (img) p.image = img;
+          const local = await idbGet('img_' + p.id);
+          if (local) { p.image = local; continue; }
         } catch {}
-        delete p._hasImage;
+        // ثم من السحابة إن لم توجد محلياً
+        if (fromCloud) {
+          const img = await cloudGet(CLOUD_KEYS.imgPrefix + p.id);
+          if (img) {
+            p.image = img;
+            // خزّنها محلياً للمرة القادمة
+            try { await idbSet('img_' + p.id, img); } catch {}
+          }
+        }
       }
     }
     return list;
   },
+
   async setProducts(products) {
-    // فصل الصور عن البيانات الأساسية
-    const lightList = await Promise.all(products.map(async p => {
+    // فصل الصور
+    const lightList = [];
+    const imageOps = [];
+    for (const p of products) {
       const { image, ...rest } = p;
       if (image) {
-        await idbSet('img_' + p.id, image);
         rest._hasImage = true;
+        // محلياً
+        imageOps.push(idbSet('img_' + p.id, image));
+        // سحابياً (إذا متاح)
+        imageOps.push(cloudSet(CLOUD_KEYS.imgPrefix + p.id, image));
       } else {
-        await idbDel('img_' + p.id);
         rest._hasImage = false;
+        imageOps.push(idbDel('img_' + p.id));
       }
-      return rest;
-    }));
-    const ok = lsSet(LS_KEYS.products, lightList);
-    // مزامنة سحابية صامتة للبيانات الخفيفة فقط
-    cloudTry(() => window.storage.set(LS_KEYS.products, JSON.stringify(lightList), true));
-    return ok;
+      lightList.push(rest);
+    }
+
+    // حفظ الـ metadata فوراً
+    lsSet(LS_KEYS.products, lightList);
+    const cloudOk = await cloudSet(CLOUD_KEYS.products, lightList);
+
+    // حفظ الصور في الخلفية
+    Promise.all(imageOps).catch(() => {});
+
+    return lsGet(LS_KEYS.products) !== null || cloudOk;
   },
 
   async getActivity() {
+    const cloud = await cloudGet(CLOUD_KEYS.activity);
+    if (cloud && Array.isArray(cloud)) {
+      lsSet(LS_KEYS.activity, cloud);
+      return cloud;
+    }
     return lsGet(LS_KEYS.activity);
   },
   async setActivity(activity) {
     const trimmed = activity.slice(0, 100);
-    const ok = lsSet(LS_KEYS.activity, trimmed);
-    cloudTry(() => window.storage.set(LS_KEYS.activity, JSON.stringify(trimmed), true));
-    return ok;
+    lsSet(LS_KEYS.activity, trimmed);
+    await cloudSet(CLOUD_KEYS.activity, trimmed);
+    return true;
   },
 
-  // محاولة جلب من السحابة (للمزامنة اليدوية فقط)
-  async pullFromCloud() {
-    if (typeof window.storage === 'undefined') {
-      throw new Error('السحابة غير متاحة');
-    }
-    try {
-      const [usersR, productsR, activityR] = await Promise.all([
-        window.storage.get(LS_KEYS.users, true).catch(() => null),
-        window.storage.get(LS_KEYS.products, true).catch(() => null),
-        window.storage.get(LS_KEYS.activity, true).catch(() => null)
-      ]);
-      if (usersR?.value) lsSet(LS_KEYS.users, JSON.parse(usersR.value));
-      if (productsR?.value) lsSet(LS_KEYS.products, JSON.parse(productsR.value));
-      if (activityR?.value) lsSet(LS_KEYS.activity, JSON.parse(activityR.value));
-      return true;
-    } catch (e) {
-      throw e;
-    }
-  }
+  isCloudHealthy() { return _cloudHealthy; }
 };
 
 // ============================================================
@@ -2286,6 +2346,7 @@ async function doLogin() {
 function doLogout() {
   confirmDialog('تسجيل الخروج', 'هل تريد تسجيل الخروج من النظام؟', async () => {
     await logActivity('logout', `سجّل خروج`);
+    stopAutoSync();
     state.currentUser = null;
     $('#app').classList.remove('active');
     $('#loginScreen').style.display = 'flex';
@@ -2295,7 +2356,7 @@ function doLogout() {
   }, 'تسجيل الخروج');
 }
 
-function initAfterLogin() {
+async function initAfterLogin() {
   const u = state.currentUser;
   $('#sbAvatar').textContent = u.fullName.charAt(0);
   $('#sbAvatar').style.background = ROLE_GRADIENTS[u.role];
@@ -2308,9 +2369,17 @@ function initAfterLogin() {
   // التحقق من الصلاحيات في فورم الجرد
   refreshPermissionNotice();
 
+  // مزامنة فورية من السحابة عند الدخول
+  try {
+    await loadData();
+  } catch {}
+
   // الذهاب للوحة التحكم
   switchPage('dashboard');
   renderAll();
+
+  // بدء المزامنة التلقائية في الخلفية
+  startAutoSync();
 }
 
 // ============================================================
@@ -3564,99 +3633,126 @@ function exportToExcel() {
 }
 
 // ============================================================
-// SYNC - مزامنة البيانات من السحابة (اختياري)
+// SYNC - المزامنة اليدوية والتلقائية
 // ============================================================
-async function syncData() {
-  toast('info', 'جاري المزامنة...', 'محاولة جلب البيانات من السحابة');
+let _autoSyncTimer = null;
+let _lastSyncAt = 0;
+
+async function syncData(silent = false) {
+  if (!silent) toast('info', 'جاري المزامنة...', 'جلب أحدث البيانات من السحابة');
   try {
-    // إزالة علامة الترحيل لإجبار إعادة الفحص
-    localStorage.removeItem('pb_migrated_v2');
+    // محاولة ترحيل البيانات القديمة (إن لم تتم) - مرة واحدة
     await migrateOldCloudData();
-    // ثم محاولة جلب بالمفاتيح الجديدة
-    try { await STORAGE.pullFromCloud(); } catch {}
+
+    // تحميل محدّث من السحابة
+    const oldProductsCount = state.products.length;
     await loadData();
     renderAll();
-    toast('success', '✓ تمت المزامنة', `تم تحميل ${state.products.length} منتج`);
+    _lastSyncAt = Date.now();
+
+    if (!silent) {
+      const diff = state.products.length - oldProductsCount;
+      if (diff > 0) {
+        toast('success', '✓ تمت المزامنة', `تم جلب ${diff} منتج جديد — المجموع: ${state.products.length}`);
+      } else if (diff < 0) {
+        toast('info', '✓ تمت المزامنة', `تم التحديث — المجموع: ${state.products.length}`);
+      } else {
+        toast('success', '✓ محدّث', `البيانات حديثة (${state.products.length} منتج)`);
+      }
+    }
   } catch (e) {
-    toast('warning', 'تعذّرت المزامنة السحابية', 'البيانات المحلية محفوظة بأمان');
+    if (!silent) toast('warning', 'تعذّرت المزامنة', 'البيانات المحلية محفوظة بأمان');
   }
+}
+
+// مزامنة دورية في الخلفية كل 20 ثانية
+function startAutoSync() {
+  if (_autoSyncTimer) clearInterval(_autoSyncTimer);
+  _autoSyncTimer = setInterval(async () => {
+    if (!state.currentUser) return; // فقط بعد تسجيل الدخول
+    if (document.hidden) return; // تخطي إذا التبويب غير نشط
+    try {
+      const beforeCount = state.products.length;
+      const cloudProducts = await cloudGet(CLOUD_KEYS.products);
+      if (cloudProducts && Array.isArray(cloudProducts)) {
+        // فحص إذا فيه تغيير
+        if (cloudProducts.length !== beforeCount ||
+            JSON.stringify(cloudProducts.map(p => p.id).sort()) !==
+            JSON.stringify(state.products.map(p => p.id).sort())) {
+          await loadData();
+          renderAll();
+          if (cloudProducts.length > beforeCount) {
+            toast('info', '🔄 بيانات جديدة', `تم إضافة ${cloudProducts.length - beforeCount} منتج من جهاز آخر`);
+          }
+        }
+      }
+    } catch {}
+  }, 20000); // كل 20 ثانية
+}
+
+function stopAutoSync() {
+  if (_autoSyncTimer) { clearInterval(_autoSyncTimer); _autoSyncTimer = null; }
 }
 
 // ============================================================
 // INIT - تحميل البيانات من التخزين
 // ============================================================
 
-// ترحيل البيانات القديمة من السحابة إلى localStorage (مرة واحدة)
+// ترحيل البيانات من المفاتيح السحابية القديمة (v1, v2) إلى v3 - مرة واحدة
 async function migrateOldCloudData() {
-  const MIGRATED_FLAG = 'pb_migrated_v2';
-  if (localStorage.getItem(MIGRATED_FLAG)) return; // تم الترحيل سابقاً
+  const MIGRATED_FLAG = 'pb_migrated_v3';
+  if (localStorage.getItem(MIGRATED_FLAG)) return;
 
-  if (typeof window.storage === 'undefined') {
+  if (!CLOUD_AVAILABLE) {
     localStorage.setItem(MIGRATED_FLAG, '1');
     return;
   }
 
   let migratedCount = 0;
+  const oldKeysToTry = {
+    users: ['pb_users', 'pb_cloud_users'],
+    products: ['pb_products', 'pb_cloud_products'],
+    activity: ['pb_activity', 'pb_cloud_activity']
+  };
 
-  // ترحيل المستخدمين القديمين
+  // ترحيل المستخدمين
   try {
-    const oldUsers = await window.storage.get('pb_users', true).catch(() => null);
-    if (oldUsers?.value && !lsGet(LS_KEYS.users)) {
-      const parsed = JSON.parse(oldUsers.value);
-      if (Array.isArray(parsed) && parsed.length) {
-        lsSet(LS_KEYS.users, parsed);
-        migratedCount++;
-      }
-    }
-  } catch {}
-
-  // ترحيل المنتجات القديمة (مفتاح مباشر)
-  try {
-    const oldProducts = await window.storage.get('pb_products', true).catch(() => null);
-    if (oldProducts?.value && !lsGet(LS_KEYS.products)) {
-      const parsed = JSON.parse(oldProducts.value);
-      if (Array.isArray(parsed) && parsed.length) {
-        // فصل الصور إلى IndexedDB
-        const lightList = [];
-        for (const p of parsed) {
-          const { image, ...rest } = p;
-          if (image) {
-            try { await idbSet('img_' + p.id, image); rest._hasImage = true; }
-            catch { rest._hasImage = false; }
-          } else {
-            rest._hasImage = false;
-          }
-          lightList.push(rest);
+    const existingUsers = await cloudGet(CLOUD_KEYS.users);
+    if (!existingUsers || !existingUsers.length) {
+      for (const oldKey of oldKeysToTry.users) {
+        const old = await cloudGet(oldKey);
+        if (old && Array.isArray(old) && old.length) {
+          await cloudSet(CLOUD_KEYS.users, old);
+          migratedCount++;
+          break;
         }
-        lsSet(LS_KEYS.products, lightList);
-        migratedCount += parsed.length;
       }
     }
   } catch {}
 
-  // ترحيل المنتجات القديمة (نمط مقسّم: pb_products_index + pb_img:*)
+  // ترحيل المنتجات
   try {
-    if (!lsGet(LS_KEYS.products)) {
-      const oldIdx = await window.storage.get('pb_products_index', true).catch(() => null);
-      if (oldIdx?.value) {
-        const baseList = JSON.parse(oldIdx.value);
-        if (Array.isArray(baseList) && baseList.length) {
+    const existingProducts = await cloudGet(CLOUD_KEYS.products);
+    if (!existingProducts || !existingProducts.length) {
+      for (const oldKey of oldKeysToTry.products) {
+        const old = await cloudGet(oldKey);
+        if (old && Array.isArray(old) && old.length) {
+          // تبسيط: نأخذ كما هي (قد تحتوي صور)
           const lightList = [];
-          for (const p of baseList) {
+          for (const p of old) {
             const { image, ...rest } = p;
-            try {
-              const imgR = await window.storage.get('pb_img:' + p.id, true).catch(() => null);
-              if (imgR?.value) {
-                await idbSet('img_' + p.id, imgR.value);
-                rest._hasImage = true;
-              } else {
-                rest._hasImage = false;
-              }
-            } catch { rest._hasImage = false; }
+            if (image) {
+              rest._hasImage = true;
+              try { await idbSet('img_' + p.id, image); } catch {}
+              try { await cloudSet(CLOUD_KEYS.imgPrefix + p.id, image); } catch {}
+            } else {
+              rest._hasImage = rest._hasImage || false;
+            }
             lightList.push(rest);
           }
-          lsSet(LS_KEYS.products, lightList);
-          migratedCount += baseList.length;
+          await cloudSet(CLOUD_KEYS.products, lightList);
+          migratedCount += old.length;
+          break;
         }
       }
     }
@@ -3664,21 +3760,26 @@ async function migrateOldCloudData() {
 
   // ترحيل السجل
   try {
-    const oldActivity = await window.storage.get('pb_activity', true).catch(() => null);
-    if (oldActivity?.value && !lsGet(LS_KEYS.activity)) {
-      const parsed = JSON.parse(oldActivity.value);
-      if (Array.isArray(parsed)) lsSet(LS_KEYS.activity, parsed);
+    const existingActivity = await cloudGet(CLOUD_KEYS.activity);
+    if (!existingActivity || !existingActivity.length) {
+      for (const oldKey of oldKeysToTry.activity) {
+        const old = await cloudGet(oldKey);
+        if (old && Array.isArray(old)) {
+          await cloudSet(CLOUD_KEYS.activity, old);
+          break;
+        }
+      }
     }
   } catch {}
 
   localStorage.setItem(MIGRATED_FLAG, '1');
   if (migratedCount > 0) {
-    console.log(`[ProBench] Migrated ${migratedCount} items from cloud.`);
+    console.log(`[ProBench] Migrated ${migratedCount} items`);
   }
 }
 
 async function loadData() {
-  // محاولة ترحيل البيانات القديمة أولاً
+  // ترحيل البيانات من المفاتيح القديمة (مرة واحدة)
   await migrateOldCloudData();
 
   // المستخدمون
