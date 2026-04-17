@@ -1339,6 +1339,78 @@
   </div>
 </div>
 
+<!-- ============ شاشة إعداد السحابة (تظهر مرة واحدة) ============ -->
+<div class="login-screen" id="setupScreen" style="display:none;">
+  <div class="login-card" style="max-width:480px;">
+    <div class="pb-logo pb-logo-md login-logo"></div>
+    <div class="login-brand">
+      <h1>ProBench</h1>
+      <p>دكة المحترفين</p>
+    </div>
+    <h2 class="login-title">إعداد المزامنة السحابية</h2>
+    <p class="login-subtitle">خطوة واحدة لمزامنة بياناتك بين كل الأجهزة</p>
+
+    <!-- التبويبات: جديد / موجود -->
+    <div style="display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:var(--radius-md);margin-bottom:18px;">
+      <button type="button" class="setup-tab active" data-tab="new" onclick="switchSetupTab('new')"
+        style="flex:1;padding:10px;background:white;border:none;border-radius:8px;font-family:'Tajawal';font-weight:700;font-size:13px;cursor:pointer;box-shadow:var(--shadow-xs);color:var(--primary);">
+        🆕 إنشاء متجر جديد
+      </button>
+      <button type="button" class="setup-tab" data-tab="existing" onclick="switchSetupTab('existing')"
+        style="flex:1;padding:10px;background:transparent;border:none;border-radius:8px;font-family:'Tajawal';font-weight:700;font-size:13px;cursor:pointer;color:var(--gray-700);">
+        🔗 ربط متجر موجود
+      </button>
+    </div>
+
+    <!-- إنشاء جديد -->
+    <div id="setupNew" style="display:block;">
+      <div class="notice info" style="margin-bottom:14px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>اضغط الزر لإنشاء متجر سحابي جديد. سيتم توليد <b>رمز متجر</b> فريد احفظه لربط الأجهزة الأخرى به.</div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block btn-lg" onclick="setupCreateStore()" id="btnCreateStore">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        إنشاء متجر جديد
+      </button>
+    </div>
+
+    <!-- ربط موجود -->
+    <div id="setupExisting" style="display:none;">
+      <div class="notice info" style="margin-bottom:14px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>أدخل <b>رمز المتجر</b> الذي حصلت عليه من جهازك الأول لتتم مزامنة كل البيانات فوراً.</div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">رمز المتجر <span class="req">*</span></label>
+        <input type="text" id="existingBinId" class="input" placeholder="مثال: 6789abcdef01234567890" style="font-family:monospace;">
+      </div>
+      <button type="button" class="btn btn-primary btn-block btn-lg" onclick="setupLinkStore()" id="btnLinkStore">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        ربط المتجر
+      </button>
+    </div>
+
+    <!-- عرض رمز المتجر بعد الإنشاء -->
+    <div id="setupSuccess" style="display:none;margin-top:18px;padding:18px;background:var(--success-bg);border-radius:var(--radius-md);border:1.5px solid var(--success);">
+      <div style="text-align:center;margin-bottom:10px;">
+        <div style="font-size:28px;">🎉</div>
+        <div style="font-weight:800;color:#065F46;font-size:15px;margin-top:4px;">تم إنشاء متجرك بنجاح!</div>
+      </div>
+      <div style="font-size:12px;color:#065F46;margin-bottom:8px;font-weight:700;">احفظ هذا الرمز لربط الأجهزة الأخرى:</div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="newBinIdDisplay" readonly style="flex:1;padding:10px 12px;border:1.5px solid var(--success);border-radius:8px;font-family:monospace;font-size:13px;font-weight:700;background:white;color:var(--dark);text-align:center;">
+        <button type="button" class="btn btn-primary" onclick="copyBinId()" style="padding:10px 14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+      <button type="button" class="btn btn-accent btn-block" onclick="proceedToLogin()" style="margin-top:12px;">
+        متابعة إلى تسجيل الدخول
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ شاشة الدخول ============ -->
 <div class="login-screen" id="loginScreen" style="display:none;">
   <div class="login-card">
@@ -1457,6 +1529,9 @@
         <div class="topbar-actions">
           <button class="icon-btn" onclick="exportToExcel()" title="تصدير إلى Excel">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="icon-btn" onclick="showBinInfo()" title="معلومات المتجر السحابي">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
           </button>
           <button class="icon-btn" onclick="syncData()" title="مزامنة البيانات">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
@@ -1991,83 +2066,21 @@ let state = {
 };
 
 // ============================================================
-// STORAGE LAYER - طبقة تخزين سحابية مع نسخة محلية احتياطية
+// STORAGE LAYER - تخزين سحابي حقيقي عبر JSONBin.io
 // ============================================================
-// النظام يعمل بالأولوية:
-// 1) السحابة (window.storage مع shared:true) — مزامنة حقيقية بين الأجهزة
-// 2) localStorage كنسخة احتياطية (في حالة انقطاع السحابة)
-// 3) IndexedDB للصور محلياً فقط (بسبب حجمها الكبير)
-// 4) مزامنة دورية تلقائية كل 20 ثانية
+// نظام المزامنة:
+// 1) JSONBin.io = قاعدة بيانات سحابية مشتركة (Bin عام واحد لكل المتجر)
+// 2) localStorage = كاش محلي سريع + نسخة احتياطية للعرض دون انترنت
+// 3) المزامنة دورية كل 15 ثانية + عند كل حفظ + عند تسجيل الدخول
 // ============================================================
+
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
+const BIN_ID_KEY = 'pb_bin_id';
 
 const LS_KEYS = {
-  users: 'pb_users_v3',
-  products: 'pb_products_v3',
-  activity: 'pb_activity_v3'
+  data: 'pb_data_v4',     // كل البيانات معاً
+  binId: 'pb_bin_id'      // معرّف الـ bin
 };
-
-const CLOUD_KEYS = {
-  users: 'pb_cloud_users',
-  products: 'pb_cloud_products',
-  activity: 'pb_cloud_activity',
-  imgPrefix: 'pb_cloud_img_'
-};
-
-// ---------- IndexedDB للصور ----------
-let _dbPromise = null;
-function openDB() {
-  if (_dbPromise) return _dbPromise;
-  _dbPromise = new Promise((resolve, reject) => {
-    try {
-      const req = indexedDB.open('probench_db', 1);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains('images')) {
-          db.createObjectStore('images');
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    } catch (e) { reject(e); }
-  });
-  return _dbPromise;
-}
-
-async function idbSet(key, value) {
-  try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('images', 'readwrite');
-      tx.objectStore('images').put(value, key);
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch { return false; }
-}
-
-async function idbGet(key) {
-  try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('images', 'readonly');
-      const req = tx.objectStore('images').get(key);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
-  } catch { return null; }
-}
-
-async function idbDel(key) {
-  try {
-    const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction('images', 'readwrite');
-      tx.objectStore('images').delete(key);
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    });
-  } catch { return false; }
-}
 
 // ---------- localStorage helpers ----------
 function lsGet(key) {
@@ -2076,156 +2089,146 @@ function lsGet(key) {
     return v ? JSON.parse(v) : null;
   } catch { return null; }
 }
-
 function lsSet(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (e) {
-    console.warn('localStorage full', e);
+    console.warn('localStorage write failed:', e);
     return false;
   }
 }
 
-// ---------- CLOUD helpers (آمنة) ----------
-const CLOUD_AVAILABLE = (typeof window.storage !== 'undefined');
+// ---------- بنية البيانات الموحّدة ----------
+function emptyData() {
+  return {
+    users: [],
+    products: [],
+    activity: [],
+    updatedAt: 0
+  };
+}
 
-// حالة الاتصال السحابي — تُعرض للمستخدم
-let _cloudHealthy = CLOUD_AVAILABLE;
+// ---------- JSONBin API ----------
+function getBinId() {
+  return localStorage.getItem(LS_KEYS.binId);
+}
+function setBinId(id) {
+  localStorage.setItem(LS_KEYS.binId, id);
+}
 
-async function cloudGet(key) {
-  if (!CLOUD_AVAILABLE) return null;
+async function createNewBin() {
+  // إنشاء bin جديد عام (public) يمكن لأي أحد يعرف رقمه قراءته وتعديله
   try {
-    const r = await window.storage.get(key, true);
-    // التحقق بعناية من صيغة الاستجابة
-    if (!r) return null;
-    if (typeof r.value !== 'string') return null;
-    _cloudHealthy = true;
-    return JSON.parse(r.value);
+    const resp = await fetch(JSONBIN_BASE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bin-Private': 'false',
+        'X-Bin-Name': 'ProBench-Inventory'
+      },
+      body: JSON.stringify(emptyData())
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const id = data.metadata?.id;
+    if (!id) throw new Error('no id returned');
+    return id;
   } catch (e) {
-    _cloudHealthy = false;
-    console.debug('cloudGet failed for', key, e?.message);
-    return null;
+    console.error('createNewBin failed:', e);
+    throw e;
   }
 }
 
-async function cloudSet(key, value) {
-  if (!CLOUD_AVAILABLE) return false;
+async function fetchBin(binId) {
+  if (!binId) throw new Error('no bin id');
   try {
-    const json = JSON.stringify(value);
-    // الحد الأقصى 5 ميجا لكل مفتاح
-    if (json.length > 4.5 * 1024 * 1024) {
-      console.warn('cloud value too big for key:', key);
-      return false;
-    }
-    await window.storage.set(key, json, true);
-    _cloudHealthy = true;
+    const resp = await fetch(`${JSONBIN_BASE}/${binId}/latest?meta=false`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    // عندما meta=false، الرد هو البيانات مباشرة
+    return (data && typeof data === 'object') ? data : emptyData();
+  } catch (e) {
+    console.error('fetchBin failed:', e);
+    throw e;
+  }
+}
+
+async function updateBin(binId, data) {
+  if (!binId) throw new Error('no bin id');
+  try {
+    data.updatedAt = Date.now();
+    const resp = await fetch(`${JSONBIN_BASE}/${binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bin-Versioning': 'false'
+      },
+      body: JSON.stringify(data)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
     return true;
   } catch (e) {
-    _cloudHealthy = false;
-    console.debug('cloudSet failed for', key, e?.message);
-    return false;
+    console.error('updateBin failed:', e);
+    throw e;
   }
 }
 
 // ---------- STORAGE API ----------
+let _inflightUpdate = null;
+
+async function pullData() {
+  const binId = getBinId();
+  if (!binId) {
+    // ما فيه bin - رجع المحلي
+    return lsGet(LS_KEYS.data) || emptyData();
+  }
+  try {
+    const cloud = await fetchBin(binId);
+    lsSet(LS_KEYS.data, cloud);
+    return cloud;
+  } catch (e) {
+    // فشل — استخدم المحلي
+    return lsGet(LS_KEYS.data) || emptyData();
+  }
+}
+
+async function pushData(data) {
+  data.updatedAt = Date.now();
+  lsSet(LS_KEYS.data, data); // محلي فوراً
+
+  const binId = getBinId();
+  if (!binId) return false;
+
+  // تجنب طلبات متزامنة - آخر طلب فقط
+  if (_inflightUpdate) {
+    try { await _inflightUpdate; } catch {}
+  }
+  _inflightUpdate = updateBin(binId, data).finally(() => { _inflightUpdate = null; });
+  try {
+    await _inflightUpdate;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// البيانات الحالية محفوظة دائماً في state.cloudData
+// STORAGE لا يعمل كقاعدة منفصلة، بل يدير كامل الكائن
 const STORAGE = {
-  // جلب المستخدمين: السحابة أولاً ثم المحلي
-  async getUsers() {
-    const cloud = await cloudGet(CLOUD_KEYS.users);
-    if (cloud && Array.isArray(cloud) && cloud.length > 0) {
-      lsSet(LS_KEYS.users, cloud); // كاش محلي
-      return cloud;
-    }
-    return lsGet(LS_KEYS.users);
+  async getAll() { return await pullData(); },
+  async saveAll(data) { return await pushData(data); },
+  hasBin() { return !!getBinId(); },
+  async createBin() {
+    const id = await createNewBin();
+    setBinId(id);
+    return id;
   },
-  async setUsers(users) {
-    lsSet(LS_KEYS.users, users); // محلي فوراً
-    await cloudSet(CLOUD_KEYS.users, users); // سحابي
-    return true;
-  },
-
-  // جلب المنتجات: السحابة أولاً للـ metadata + الصور من IndexedDB أو السحابة
-  async getProducts() {
-    let list = await cloudGet(CLOUD_KEYS.products);
-    let fromCloud = !!list;
-
-    if (!list) {
-      list = lsGet(LS_KEYS.products);
-    } else {
-      // كاش محلي
-      lsSet(LS_KEYS.products, list);
-    }
-
-    if (!list || !Array.isArray(list)) return [];
-
-    // استرجاع الصور
-    for (const p of list) {
-      if (!p.image && p._hasImage) {
-        // محاولة من IndexedDB أولاً (أسرع)
-        try {
-          const local = await idbGet('img_' + p.id);
-          if (local) { p.image = local; continue; }
-        } catch {}
-        // ثم من السحابة إن لم توجد محلياً
-        if (fromCloud) {
-          const img = await cloudGet(CLOUD_KEYS.imgPrefix + p.id);
-          if (img) {
-            p.image = img;
-            // خزّنها محلياً للمرة القادمة
-            try { await idbSet('img_' + p.id, img); } catch {}
-          }
-        }
-      }
-    }
-    return list;
-  },
-
-  async setProducts(products) {
-    // فصل الصور
-    const lightList = [];
-    const imageOps = [];
-    for (const p of products) {
-      const { image, ...rest } = p;
-      if (image) {
-        rest._hasImage = true;
-        // محلياً
-        imageOps.push(idbSet('img_' + p.id, image));
-        // سحابياً (إذا متاح)
-        imageOps.push(cloudSet(CLOUD_KEYS.imgPrefix + p.id, image));
-      } else {
-        rest._hasImage = false;
-        imageOps.push(idbDel('img_' + p.id));
-      }
-      lightList.push(rest);
-    }
-
-    // حفظ الـ metadata فوراً
-    lsSet(LS_KEYS.products, lightList);
-    const cloudOk = await cloudSet(CLOUD_KEYS.products, lightList);
-
-    // حفظ الصور في الخلفية
-    Promise.all(imageOps).catch(() => {});
-
-    return lsGet(LS_KEYS.products) !== null || cloudOk;
-  },
-
-  async getActivity() {
-    const cloud = await cloudGet(CLOUD_KEYS.activity);
-    if (cloud && Array.isArray(cloud)) {
-      lsSet(LS_KEYS.activity, cloud);
-      return cloud;
-    }
-    return lsGet(LS_KEYS.activity);
-  },
-  async setActivity(activity) {
-    const trimmed = activity.slice(0, 100);
-    lsSet(LS_KEYS.activity, trimmed);
-    await cloudSet(CLOUD_KEYS.activity, trimmed);
-    return true;
-  },
-
-  isCloudHealthy() { return _cloudHealthy; }
+  setBinId(id) { setBinId(id); },
+  getBinId() { return getBinId(); }
 };
 
 // ============================================================
@@ -2939,7 +2942,7 @@ async function saveProduct(e) {
   }
 
   // الحفظ السحابي
-  const ok = await STORAGE.setProducts(state.products);
+  const ok = await saveToCloud();
 
   btn.disabled = false;
 
@@ -3156,7 +3159,7 @@ function deleteProduct(id) {
     `هل أنت متأكد من حذف "${p.name}"؟ لا يمكن التراجع عن هذه العملية.`,
     async () => {
       state.products = state.products.filter(x => x.id !== id);
-      const ok = await STORAGE.setProducts(state.products);
+      const ok = await saveToCloud();
       if (ok) {
         await logActivity('delete', `حذف المنتج "${p.name}"`, p.sku);
         toast('success', 'تم الحذف', `${p.name} — تمت إزالته من النظام`);
@@ -3356,7 +3359,7 @@ async function logActivity(type, action, sku) {
     timestamp: Date.now()
   };
   state.activity.unshift(entry);
-  await STORAGE.setActivity(state.activity);
+  await saveToCloud();
 }
 
 const ACTIVITY_ICONS = {
@@ -3406,7 +3409,7 @@ function clearActivity() {
   }
   confirmDialog('مسح سجل العمليات', 'هل أنت متأكد من مسح كل السجل؟', async () => {
     state.activity = [];
-    await STORAGE.setActivity([]);
+    await saveToCloud();
     renderActivity();
     toast('success', 'تم المسح', 'سجل العمليات أصبح فارغاً');
   }, 'مسح الكل');
@@ -3499,7 +3502,7 @@ async function saveUser() {
       state.users[idx].username = username;
       state.users[idx].role = role;
       if (password) state.users[idx].password = password;
-      await STORAGE.setUsers(state.users);
+      await saveToCloud();
       await logActivity('user', `حدّث بيانات المستخدم "${fullName}"`);
       toast('success', '✓ تم التحديث', `${fullName} — ${ROLE_LABELS[role]}`);
     }
@@ -3509,7 +3512,7 @@ async function saveUser() {
       createdAt: Date.now()
     };
     state.users.push(newUser);
-    await STORAGE.setUsers(state.users);
+    await saveToCloud();
     await logActivity('user', `أضاف مستخدم جديد "${fullName}"`);
     toast('success', '✓ تمت الإضافة', `${fullName} — ${ROLE_LABELS[role]}`);
   }
@@ -3526,7 +3529,7 @@ function deleteUser(id) {
   if (!u) return;
   confirmDialog('حذف المستخدم', `هل أنت متأكد من حذف "${u.fullName}"؟`, async () => {
     state.users = state.users.filter(x => x.id !== id);
-    await STORAGE.setUsers(state.users);
+    await saveToCloud();
     await logActivity('user', `حذف المستخدم "${u.fullName}"`);
     toast('success', 'تم الحذف', `${u.fullName} — تمت إزالته`);
     renderUsers();
@@ -3638,13 +3641,20 @@ function exportToExcel() {
 let _autoSyncTimer = null;
 let _lastSyncAt = 0;
 
+// حفظ موحّد - يأخذ state الحالي ويرفع كل شي
+async function saveToCloud() {
+  const data = {
+    users: state.users,
+    products: state.products,
+    activity: state.activity,
+    updatedAt: Date.now()
+  };
+  return await STORAGE.saveAll(data);
+}
+
 async function syncData(silent = false) {
   if (!silent) toast('info', 'جاري المزامنة...', 'جلب أحدث البيانات من السحابة');
   try {
-    // محاولة ترحيل البيانات القديمة (إن لم تتم) - مرة واحدة
-    await migrateOldCloudData();
-
-    // تحميل محدّث من السحابة
     const oldProductsCount = state.products.length;
     await loadData();
     renderAll();
@@ -3665,29 +3675,33 @@ async function syncData(silent = false) {
   }
 }
 
-// مزامنة دورية في الخلفية كل 20 ثانية
+// مزامنة دورية في الخلفية كل 15 ثانية
 function startAutoSync() {
   if (_autoSyncTimer) clearInterval(_autoSyncTimer);
   _autoSyncTimer = setInterval(async () => {
-    if (!state.currentUser) return; // فقط بعد تسجيل الدخول
-    if (document.hidden) return; // تخطي إذا التبويب غير نشط
+    if (!state.currentUser) return;
+    if (document.hidden) return;
+    if (!STORAGE.hasBin()) return;
     try {
-      const beforeCount = state.products.length;
-      const cloudProducts = await cloudGet(CLOUD_KEYS.products);
-      if (cloudProducts && Array.isArray(cloudProducts)) {
-        // فحص إذا فيه تغيير
-        if (cloudProducts.length !== beforeCount ||
-            JSON.stringify(cloudProducts.map(p => p.id).sort()) !==
-            JSON.stringify(state.products.map(p => p.id).sort())) {
-          await loadData();
+      const beforeIds = state.products.map(p => p.id).sort().join(',');
+      const cloudData = await STORAGE.getAll();
+      if (cloudData && Array.isArray(cloudData.products)) {
+        const afterIds = cloudData.products.map(p => p.id).sort().join(',');
+        if (beforeIds !== afterIds || cloudData.products.length !== state.products.length) {
+          const diff = cloudData.products.length - state.products.length;
+          state.users = cloudData.users || state.users;
+          state.products = cloudData.products || [];
+          state.activity = cloudData.activity || state.activity;
           renderAll();
-          if (cloudProducts.length > beforeCount) {
-            toast('info', '🔄 بيانات جديدة', `تم إضافة ${cloudProducts.length - beforeCount} منتج من جهاز آخر`);
+          if (diff > 0) {
+            toast('info', '🔄 بيانات جديدة', `تم إضافة ${diff} منتج من جهاز آخر`);
+          } else if (diff < 0) {
+            toast('info', '🔄 تحديث', `بعض المنتجات حُذفت من جهاز آخر`);
           }
         }
       }
     } catch {}
-  }, 20000); // كل 20 ثانية
+  }, 15000);
 }
 
 function stopAutoSync() {
@@ -3695,109 +3709,22 @@ function stopAutoSync() {
 }
 
 // ============================================================
-// INIT - تحميل البيانات من التخزين
+// INIT - تحميل البيانات من السحابة
 // ============================================================
-
-// ترحيل البيانات من المفاتيح السحابية القديمة (v1, v2) إلى v3 - مرة واحدة
-async function migrateOldCloudData() {
-  const MIGRATED_FLAG = 'pb_migrated_v3';
-  if (localStorage.getItem(MIGRATED_FLAG)) return;
-
-  if (!CLOUD_AVAILABLE) {
-    localStorage.setItem(MIGRATED_FLAG, '1');
-    return;
-  }
-
-  let migratedCount = 0;
-  const oldKeysToTry = {
-    users: ['pb_users', 'pb_cloud_users'],
-    products: ['pb_products', 'pb_cloud_products'],
-    activity: ['pb_activity', 'pb_cloud_activity']
-  };
-
-  // ترحيل المستخدمين
-  try {
-    const existingUsers = await cloudGet(CLOUD_KEYS.users);
-    if (!existingUsers || !existingUsers.length) {
-      for (const oldKey of oldKeysToTry.users) {
-        const old = await cloudGet(oldKey);
-        if (old && Array.isArray(old) && old.length) {
-          await cloudSet(CLOUD_KEYS.users, old);
-          migratedCount++;
-          break;
-        }
-      }
-    }
-  } catch {}
-
-  // ترحيل المنتجات
-  try {
-    const existingProducts = await cloudGet(CLOUD_KEYS.products);
-    if (!existingProducts || !existingProducts.length) {
-      for (const oldKey of oldKeysToTry.products) {
-        const old = await cloudGet(oldKey);
-        if (old && Array.isArray(old) && old.length) {
-          // تبسيط: نأخذ كما هي (قد تحتوي صور)
-          const lightList = [];
-          for (const p of old) {
-            const { image, ...rest } = p;
-            if (image) {
-              rest._hasImage = true;
-              try { await idbSet('img_' + p.id, image); } catch {}
-              try { await cloudSet(CLOUD_KEYS.imgPrefix + p.id, image); } catch {}
-            } else {
-              rest._hasImage = rest._hasImage || false;
-            }
-            lightList.push(rest);
-          }
-          await cloudSet(CLOUD_KEYS.products, lightList);
-          migratedCount += old.length;
-          break;
-        }
-      }
-    }
-  } catch {}
-
-  // ترحيل السجل
-  try {
-    const existingActivity = await cloudGet(CLOUD_KEYS.activity);
-    if (!existingActivity || !existingActivity.length) {
-      for (const oldKey of oldKeysToTry.activity) {
-        const old = await cloudGet(oldKey);
-        if (old && Array.isArray(old)) {
-          await cloudSet(CLOUD_KEYS.activity, old);
-          break;
-        }
-      }
-    }
-  } catch {}
-
-  localStorage.setItem(MIGRATED_FLAG, '1');
-  if (migratedCount > 0) {
-    console.log(`[ProBench] Migrated ${migratedCount} items`);
-  }
-}
-
 async function loadData() {
-  // ترحيل البيانات من المفاتيح القديمة (مرة واحدة)
-  await migrateOldCloudData();
+  const data = await STORAGE.getAll();
 
   // المستخدمون
-  const users = await STORAGE.getUsers();
-  if (users && users.length > 0) {
-    state.users = users;
+  if (data.users && data.users.length > 0) {
+    state.users = data.users;
   } else {
     state.users = [...DEFAULT_USERS];
-    await STORAGE.setUsers(state.users);
+    // احفظ الافتراضيين في السحابة عند أول مرة
+    await saveToCloud();
   }
 
-  // المنتجات
-  const products = await STORAGE.getProducts();
-  state.products = products || [];
-
-  // السجل
-  const activity = await STORAGE.getActivity();
-  state.activity = activity || [];
+  state.products = data.products || [];
+  state.activity = data.activity || [];
 }
 
 function renderAll() {
@@ -3806,25 +3733,167 @@ function renderAll() {
   if (PERMISSIONS[state.currentUser.role].manageUsers) renderUsers();
 }
 
+// ============================================================
+// SETUP SCREEN - شاشة إعداد السحابة
+// ============================================================
+function switchSetupTab(tab) {
+  document.querySelectorAll('.setup-tab').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = 'transparent';
+    b.style.color = 'var(--gray-700)';
+    b.style.boxShadow = 'none';
+  });
+  const activeBtn = document.querySelector(`.setup-tab[data-tab="${tab}"]`);
+  activeBtn.classList.add('active');
+  activeBtn.style.background = 'white';
+  activeBtn.style.color = 'var(--primary)';
+  activeBtn.style.boxShadow = 'var(--shadow-xs)';
+
+  $('#setupNew').style.display = tab === 'new' ? 'block' : 'none';
+  $('#setupExisting').style.display = tab === 'existing' ? 'block' : 'none';
+  $('#setupSuccess').style.display = 'none';
+}
+
+async function setupCreateStore() {
+  const btn = $('#btnCreateStore');
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;"></div> جاري الإنشاء...';
+
+  try {
+    const binId = await STORAGE.createBin();
+    $('#newBinIdDisplay').value = binId;
+    $('#setupSuccess').style.display = 'block';
+    $('#setupNew').style.display = 'none';
+    $('#setupExisting').style.display = 'none';
+    document.querySelectorAll('.setup-tab').forEach(b => b.style.pointerEvents = 'none');
+    toast('success', '🎉 تم الإنشاء', 'متجرك السحابي جاهز — احفظ الرمز');
+  } catch (e) {
+    toast('error', 'فشل الإنشاء', 'تحقق من الاتصال بالإنترنت وحاول مرة أخرى');
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+async function setupLinkStore() {
+  const binId = $('#existingBinId').value.trim();
+  if (!binId || binId.length < 10) {
+    toast('warning', 'رمز غير صحيح', 'الرجاء إدخال رمز المتجر كاملاً');
+    return;
+  }
+  const btn = $('#btnLinkStore');
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;"></div> جاري الربط...';
+
+  try {
+    // اختبار الاتصال: جلب البيانات
+    STORAGE.setBinId(binId);
+    const data = await STORAGE.getAll();
+    if (!data || typeof data !== 'object') throw new Error('invalid data');
+    // ربط ناجح
+    toast('success', '✓ تم الربط', `تم العثور على ${data.products?.length || 0} منتج`);
+    setTimeout(() => proceedToLogin(), 800);
+  } catch (e) {
+    // فشل: أزل الـ bin id المحفوظ
+    localStorage.removeItem(LS_KEYS.binId);
+    toast('error', 'رمز غير موجود', 'تحقق من الرمز وحاول مرة أخرى');
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+function copyBinId() {
+  const inp = $('#newBinIdDisplay');
+  inp.select();
+  try {
+    navigator.clipboard.writeText(inp.value);
+    toast('success', '✓ تم النسخ', 'الرمز نُسخ إلى الحافظة');
+  } catch {
+    document.execCommand('copy');
+    toast('success', '✓ تم النسخ', 'الرمز نُسخ إلى الحافظة');
+  }
+}
+
+async function proceedToLogin() {
+  $('#setupScreen').style.display = 'none';
+  $('#loginScreen').style.display = 'flex';
+  // تحميل البيانات
+  try { await loadData(); } catch {}
+}
+
+// زر في الشريط العلوي لعرض/نسخ Bin ID
+function showBinInfo() {
+  const binId = STORAGE.getBinId();
+  if (!binId) {
+    toast('warning', 'لا يوجد متجر سحابي', 'لم يتم الإعداد بعد');
+    return;
+  }
+  $('#productModalBody').innerHTML = `
+    <div style="text-align:center;padding:10px;">
+      <div style="font-size:32px;margin-bottom:8px;">☁️</div>
+      <h3 style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:4px;">معلومات المتجر السحابي</h3>
+      <p style="font-size:12px;color:var(--gray-500);margin-bottom:18px;">هذا الرمز يربط أجهزتك بنفس البيانات</p>
+    </div>
+    <div class="input-group">
+      <label class="input-label">رمز المتجر</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="binInfoId" readonly value="${binId}" style="flex:1;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-family:monospace;font-size:12px;font-weight:700;background:var(--gray-50);color:var(--dark);text-align:center;">
+        <button type="button" class="btn btn-primary" onclick="
+          const i = document.getElementById('binInfoId'); i.select();
+          navigator.clipboard.writeText(i.value).then(() => toast('success','✓ تم النسخ','الرمز جاهز'));
+        " style="padding:10px 14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="notice info" style="margin-top:14px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div>لربط جهاز آخر: افتح النظام على الجهاز الجديد واختر "ربط متجر موجود" ثم الصق هذا الرمز.</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="closeProductModal()">إغلاق</button>
+      <button class="btn btn-danger" style="flex:1;" onclick="
+        closeProductModal();
+        confirmDialog('فصل المتجر','سيتم فصل هذا الجهاز عن المتجر السحابي. البيانات السحابية لن تُحذف.',async ()=>{
+          localStorage.removeItem('pb_bin_id');
+          localStorage.removeItem('pb_data_v4');
+          location.reload();
+        },'فصل');
+      ">فصل الجهاز</button>
+    </div>
+  `;
+  $('#productModal').classList.add('active');
+}
+
 async function init() {
   buildSizes();
   buildPriceChips();
   buildColorChips();
 
-  // تحميل البيانات من التخزين المحلي
-  try {
-    await loadData();
-  } catch (e) {
-    console.error('Load failed:', e);
-    state.users = [...DEFAULT_USERS];
-    state.products = [];
-    state.activity = [];
+  // التحقق من وجود متجر سحابي
+  const hasBin = STORAGE.hasBin();
+
+  if (hasBin) {
+    // تحميل البيانات من السحابة
+    try {
+      await loadData();
+    } catch (e) {
+      console.error('Load failed:', e);
+      state.users = [...DEFAULT_USERS];
+      state.products = [];
+      state.activity = [];
+    }
   }
 
-  // إخفاء شاشة التحميل وإظهار شاشة الدخول
+  // إخفاء شاشة التحميل وإظهار الشاشة المناسبة
   setTimeout(() => {
     $('#loaderScreen').classList.add('hide');
-    $('#loginScreen').style.display = 'flex';
+    if (hasBin) {
+      $('#loginScreen').style.display = 'flex';
+    } else {
+      $('#setupScreen').style.display = 'flex';
+    }
     setTimeout(() => $('#loaderScreen').remove(), 400);
   }, 600);
 }
