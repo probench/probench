@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root {
     --primary: #3B82C4;
@@ -919,8 +921,98 @@
     display: flex;
     flex-direction: column;
     transition: all 0.2s;
+    position: relative;
   }
   .product-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--primary-light); }
+  .product-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-100), var(--shadow-md);
+  }
+
+  .product-checkbox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 3;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: white;
+    border: 2px solid var(--gray-300);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .product-checkbox:hover { border-color: var(--primary); }
+  .product-checkbox svg { display: none; color: white; }
+  .product-card.selected .product-checkbox {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+  .product-card.selected .product-checkbox svg { display: block; }
+
+  /* شريط الإجراءات العائم */
+  .selection-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: var(--dark);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    z-index: 500;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-wrap: wrap;
+    max-width: calc(100vw - 24px);
+  }
+  .selection-bar.show { transform: translateX(-50%) translateY(0); }
+  .selection-bar-count {
+    background: var(--primary);
+    color: white;
+    min-width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 14px;
+    padding: 0 8px;
+  }
+  .selection-bar-text { font-size: 13px; font-weight: 700; }
+  .selection-bar-actions { display: flex; gap: 6px; margin-right: auto; }
+  .selection-bar-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-family: 'Tajawal';
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .selection-bar-btn:hover { background: rgba(255,255,255,0.2); }
+  .selection-bar-btn.primary { background: var(--primary); }
+  .selection-bar-btn.primary:hover { background: var(--primary-dark); }
+  .selection-bar-btn.accent { background: var(--accent); }
+  .selection-bar-btn.accent:hover { background: var(--accent-dark); }
+  @media (max-width: 640px) {
+    .selection-bar { padding: 10px 12px; gap: 8px; bottom: 12px; }
+    .selection-bar-btn { padding: 7px 10px; font-size: 11px; }
+  }
 
   .product-image-wrap {
     aspect-ratio: 1;
@@ -1339,78 +1431,6 @@
   </div>
 </div>
 
-<!-- ============ شاشة إعداد السحابة (تظهر مرة واحدة) ============ -->
-<div class="login-screen" id="setupScreen" style="display:none;">
-  <div class="login-card" style="max-width:480px;">
-    <div class="pb-logo pb-logo-md login-logo"></div>
-    <div class="login-brand">
-      <h1>ProBench</h1>
-      <p>دكة المحترفين</p>
-    </div>
-    <h2 class="login-title">إعداد المزامنة السحابية</h2>
-    <p class="login-subtitle">خطوة واحدة لمزامنة بياناتك بين كل الأجهزة</p>
-
-    <!-- التبويبات: جديد / موجود -->
-    <div style="display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:var(--radius-md);margin-bottom:18px;">
-      <button type="button" class="setup-tab active" data-tab="new" onclick="switchSetupTab('new')"
-        style="flex:1;padding:10px;background:white;border:none;border-radius:8px;font-family:'Tajawal';font-weight:700;font-size:13px;cursor:pointer;box-shadow:var(--shadow-xs);color:var(--primary);">
-        🆕 إنشاء متجر جديد
-      </button>
-      <button type="button" class="setup-tab" data-tab="existing" onclick="switchSetupTab('existing')"
-        style="flex:1;padding:10px;background:transparent;border:none;border-radius:8px;font-family:'Tajawal';font-weight:700;font-size:13px;cursor:pointer;color:var(--gray-700);">
-        🔗 ربط متجر موجود
-      </button>
-    </div>
-
-    <!-- إنشاء جديد -->
-    <div id="setupNew" style="display:block;">
-      <div class="notice info" style="margin-bottom:14px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <div>اضغط الزر لإنشاء متجر سحابي جديد. سيتم توليد <b>رمز متجر</b> فريد احفظه لربط الأجهزة الأخرى به.</div>
-      </div>
-      <button type="button" class="btn btn-primary btn-block btn-lg" onclick="setupCreateStore()" id="btnCreateStore">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        إنشاء متجر جديد
-      </button>
-    </div>
-
-    <!-- ربط موجود -->
-    <div id="setupExisting" style="display:none;">
-      <div class="notice info" style="margin-bottom:14px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <div>أدخل <b>رمز المتجر</b> الذي حصلت عليه من جهازك الأول لتتم مزامنة كل البيانات فوراً.</div>
-      </div>
-      <div class="input-group">
-        <label class="input-label">رمز المتجر <span class="req">*</span></label>
-        <input type="text" id="existingBinId" class="input" placeholder="مثال: 6789abcdef01234567890" style="font-family:monospace;">
-      </div>
-      <button type="button" class="btn btn-primary btn-block btn-lg" onclick="setupLinkStore()" id="btnLinkStore">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        ربط المتجر
-      </button>
-    </div>
-
-    <!-- عرض رمز المتجر بعد الإنشاء -->
-    <div id="setupSuccess" style="display:none;margin-top:18px;padding:18px;background:var(--success-bg);border-radius:var(--radius-md);border:1.5px solid var(--success);">
-      <div style="text-align:center;margin-bottom:10px;">
-        <div style="font-size:28px;">🎉</div>
-        <div style="font-weight:800;color:#065F46;font-size:15px;margin-top:4px;">تم إنشاء متجرك بنجاح!</div>
-      </div>
-      <div style="font-size:12px;color:#065F46;margin-bottom:8px;font-weight:700;">احفظ هذا الرمز لربط الأجهزة الأخرى:</div>
-      <div style="display:flex;gap:6px;">
-        <input type="text" id="newBinIdDisplay" readonly style="flex:1;padding:10px 12px;border:1.5px solid var(--success);border-radius:8px;font-family:monospace;font-size:13px;font-weight:700;background:white;color:var(--dark);text-align:center;">
-        <button type="button" class="btn btn-primary" onclick="copyBinId()" style="padding:10px 14px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        </button>
-      </div>
-      <button type="button" class="btn btn-accent btn-block" onclick="proceedToLogin()" style="margin-top:12px;">
-        متابعة إلى تسجيل الدخول
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- ============ شاشة الدخول ============ -->
 <div class="login-screen" id="loginScreen" style="display:none;">
   <div class="login-card">
@@ -1530,11 +1550,8 @@
           <button class="icon-btn" onclick="exportToExcel()" title="تصدير إلى Excel">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-          <button class="icon-btn" onclick="showBinInfo()" title="معلومات المتجر السحابي">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
-          </button>
-          <button class="icon-btn" onclick="syncData()" title="مزامنة البيانات">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          <button class="icon-btn" onclick="openBackupModal()" title="النسخ الاحتياطي">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
         </div>
       </header>
@@ -1808,7 +1825,7 @@
                 <button class="tab" data-prod-filter="cat:casual">كاجوال</button>
               </div>
 
-              <div class="filter-row" style="margin-bottom:12px;">
+              <div class="filter-row" style="margin-bottom:12px;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-700);font-weight:600;">
                   ترتيب:
                   <select class="select" style="width:auto;padding:6px 12px;font-size:12px;" id="sortBy" onchange="renderProducts()">
@@ -1820,6 +1837,10 @@
                     <option value="qty-high">الكمية (الأعلى)</option>
                   </select>
                 </div>
+                <button class="btn btn-outline btn-sm" onclick="toggleSelectAll()" id="selectAllBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                  تحديد الكل
+                </button>
               </div>
 
               <div id="productsContainer"></div>
@@ -1987,6 +2008,25 @@
   </div>
 </div>
 
+<!-- ============ شريط الإجراءات للمنتجات المحددة ============ -->
+<div class="selection-bar" id="selectionBar">
+  <div class="selection-bar-count" id="selectionCount">0</div>
+  <div class="selection-bar-text">منتج محدد</div>
+  <div class="selection-bar-actions">
+    <button class="selection-bar-btn accent" onclick="exportSelectedExcel()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Excel
+    </button>
+    <button class="selection-bar-btn primary" onclick="exportSelectedPDF()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      PDF
+    </button>
+    <button class="selection-bar-btn" onclick="clearSelection()" title="إلغاء التحديد">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
 <!-- ============ Toast Container ============ -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -2062,24 +2102,20 @@ let state = {
   activity: [],
   prodFilter: 'all',
   editingProductId: null,
-  imageData: null
+  imageData: null,
+  selectedIds: new Set()
 };
 
 // ============================================================
-// STORAGE LAYER - تخزين سحابي حقيقي عبر JSONBin.io
+// STORAGE LAYER - تخزين محلي دائم
 // ============================================================
-// نظام المزامنة:
-// 1) JSONBin.io = قاعدة بيانات سحابية مشتركة (Bin عام واحد لكل المتجر)
-// 2) localStorage = كاش محلي سريع + نسخة احتياطية للعرض دون انترنت
-// 3) المزامنة دورية كل 15 ثانية + عند كل حفظ + عند تسجيل الدخول
+// النظام يستخدم localStorage لحفظ البيانات دائماً على الجهاز
+// البيانات تبقى حتى لو أغلقت المتصفح أو أعدت تشغيل الجهاز
+// للمزامنة بين الأجهزة: استخدم "تصدير نسخة احتياطية" ثم "استيراد" في الجهاز الآخر
 // ============================================================
-
-const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
-const BIN_ID_KEY = 'pb_bin_id';
 
 const LS_KEYS = {
-  data: 'pb_data_v4',     // كل البيانات معاً
-  binId: 'pb_bin_id'      // معرّف الـ bin
+  data: 'pb_data_v5'
 };
 
 // ---------- localStorage helpers ----------
@@ -2109,126 +2145,18 @@ function emptyData() {
   };
 }
 
-// ---------- JSONBin API ----------
-function getBinId() {
-  return localStorage.getItem(LS_KEYS.binId);
-}
-function setBinId(id) {
-  localStorage.setItem(LS_KEYS.binId, id);
-}
-
-async function createNewBin() {
-  // إنشاء bin جديد عام (public) يمكن لأي أحد يعرف رقمه قراءته وتعديله
-  try {
-    const resp = await fetch(JSONBIN_BASE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Bin-Private': 'false',
-        'X-Bin-Name': 'ProBench-Inventory'
-      },
-      body: JSON.stringify(emptyData())
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const id = data.metadata?.id;
-    if (!id) throw new Error('no id returned');
-    return id;
-  } catch (e) {
-    console.error('createNewBin failed:', e);
-    throw e;
-  }
-}
-
-async function fetchBin(binId) {
-  if (!binId) throw new Error('no bin id');
-  try {
-    const resp = await fetch(`${JSONBIN_BASE}/${binId}/latest?meta=false`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    // عندما meta=false، الرد هو البيانات مباشرة
-    return (data && typeof data === 'object') ? data : emptyData();
-  } catch (e) {
-    console.error('fetchBin failed:', e);
-    throw e;
-  }
-}
-
-async function updateBin(binId, data) {
-  if (!binId) throw new Error('no bin id');
-  try {
-    data.updatedAt = Date.now();
-    const resp = await fetch(`${JSONBIN_BASE}/${binId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Bin-Versioning': 'false'
-      },
-      body: JSON.stringify(data)
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    return true;
-  } catch (e) {
-    console.error('updateBin failed:', e);
-    throw e;
-  }
-}
-
 // ---------- STORAGE API ----------
-let _inflightUpdate = null;
-
-async function pullData() {
-  const binId = getBinId();
-  if (!binId) {
-    // ما فيه bin - رجع المحلي
-    return lsGet(LS_KEYS.data) || emptyData();
-  }
-  try {
-    const cloud = await fetchBin(binId);
-    lsSet(LS_KEYS.data, cloud);
-    return cloud;
-  } catch (e) {
-    // فشل — استخدم المحلي
-    return lsGet(LS_KEYS.data) || emptyData();
-  }
-}
-
-async function pushData(data) {
-  data.updatedAt = Date.now();
-  lsSet(LS_KEYS.data, data); // محلي فوراً
-
-  const binId = getBinId();
-  if (!binId) return false;
-
-  // تجنب طلبات متزامنة - آخر طلب فقط
-  if (_inflightUpdate) {
-    try { await _inflightUpdate; } catch {}
-  }
-  _inflightUpdate = updateBin(binId, data).finally(() => { _inflightUpdate = null; });
-  try {
-    await _inflightUpdate;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// البيانات الحالية محفوظة دائماً في state.cloudData
-// STORAGE لا يعمل كقاعدة منفصلة، بل يدير كامل الكائن
 const STORAGE = {
-  async getAll() { return await pullData(); },
-  async saveAll(data) { return await pushData(data); },
-  hasBin() { return !!getBinId(); },
-  async createBin() {
-    const id = await createNewBin();
-    setBinId(id);
-    return id;
+  async getAll() {
+    return lsGet(LS_KEYS.data) || emptyData();
   },
-  setBinId(id) { setBinId(id); },
-  getBinId() { return getBinId(); }
+  async saveAll(data) {
+    data.updatedAt = Date.now();
+    return lsSet(LS_KEYS.data, data);
+  },
+  clear() {
+    localStorage.removeItem(LS_KEYS.data);
+  }
 };
 
 // ============================================================
@@ -2351,6 +2279,7 @@ function doLogout() {
     await logActivity('logout', `سجّل خروج`);
     stopAutoSync();
     state.currentUser = null;
+    state.selectedIds.clear();
     $('#app').classList.remove('active');
     $('#loginScreen').style.display = 'flex';
     $('#loginUsername').value = '';
@@ -3023,7 +2952,10 @@ function renderProducts() {
 
   const u = state.currentUser;
   container.innerHTML = `<div class="products-grid">${filtered.map(p => `
-    <div class="product-card">
+    <div class="product-card ${state.selectedIds.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
+      <div class="product-checkbox" onclick="event.stopPropagation();toggleSelect('${p.id}')" title="تحديد">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
       <div class="product-image-wrap">
         ${p.image
           ? `<img src="${p.image}" alt="${p.name}" loading="lazy">`
@@ -3069,6 +3001,9 @@ function renderProducts() {
       </div>
     </div>
   `).join('')}</div>`;
+
+  // تحديث شريط التحديد بعد إعادة الرندرنغ
+  updateSelectionUI();
 }
 
 function viewProduct(id) {
@@ -3636,12 +3571,10 @@ function exportToExcel() {
 }
 
 // ============================================================
-// SYNC - المزامنة اليدوية والتلقائية
+// DATA MANAGEMENT - إدارة البيانات والنسخ الاحتياطي
 // ============================================================
-let _autoSyncTimer = null;
-let _lastSyncAt = 0;
 
-// حفظ موحّد - يأخذ state الحالي ويرفع كل شي
+// حفظ موحّد - يأخذ state الحالي ويحفظه محلياً
 async function saveToCloud() {
   const data = {
     users: state.users,
@@ -3652,65 +3585,6 @@ async function saveToCloud() {
   return await STORAGE.saveAll(data);
 }
 
-async function syncData(silent = false) {
-  if (!silent) toast('info', 'جاري المزامنة...', 'جلب أحدث البيانات من السحابة');
-  try {
-    const oldProductsCount = state.products.length;
-    await loadData();
-    renderAll();
-    _lastSyncAt = Date.now();
-
-    if (!silent) {
-      const diff = state.products.length - oldProductsCount;
-      if (diff > 0) {
-        toast('success', '✓ تمت المزامنة', `تم جلب ${diff} منتج جديد — المجموع: ${state.products.length}`);
-      } else if (diff < 0) {
-        toast('info', '✓ تمت المزامنة', `تم التحديث — المجموع: ${state.products.length}`);
-      } else {
-        toast('success', '✓ محدّث', `البيانات حديثة (${state.products.length} منتج)`);
-      }
-    }
-  } catch (e) {
-    if (!silent) toast('warning', 'تعذّرت المزامنة', 'البيانات المحلية محفوظة بأمان');
-  }
-}
-
-// مزامنة دورية في الخلفية كل 15 ثانية
-function startAutoSync() {
-  if (_autoSyncTimer) clearInterval(_autoSyncTimer);
-  _autoSyncTimer = setInterval(async () => {
-    if (!state.currentUser) return;
-    if (document.hidden) return;
-    if (!STORAGE.hasBin()) return;
-    try {
-      const beforeIds = state.products.map(p => p.id).sort().join(',');
-      const cloudData = await STORAGE.getAll();
-      if (cloudData && Array.isArray(cloudData.products)) {
-        const afterIds = cloudData.products.map(p => p.id).sort().join(',');
-        if (beforeIds !== afterIds || cloudData.products.length !== state.products.length) {
-          const diff = cloudData.products.length - state.products.length;
-          state.users = cloudData.users || state.users;
-          state.products = cloudData.products || [];
-          state.activity = cloudData.activity || state.activity;
-          renderAll();
-          if (diff > 0) {
-            toast('info', '🔄 بيانات جديدة', `تم إضافة ${diff} منتج من جهاز آخر`);
-          } else if (diff < 0) {
-            toast('info', '🔄 تحديث', `بعض المنتجات حُذفت من جهاز آخر`);
-          }
-        }
-      }
-    } catch {}
-  }, 15000);
-}
-
-function stopAutoSync() {
-  if (_autoSyncTimer) { clearInterval(_autoSyncTimer); _autoSyncTimer = null; }
-}
-
-// ============================================================
-// INIT - تحميل البيانات من السحابة
-// ============================================================
 async function loadData() {
   const data = await STORAGE.getAll();
 
@@ -3719,7 +3593,6 @@ async function loadData() {
     state.users = data.users;
   } else {
     state.users = [...DEFAULT_USERS];
-    // احفظ الافتراضيين في السحابة عند أول مرة
     await saveToCloud();
   }
 
@@ -3733,167 +3606,560 @@ function renderAll() {
   if (PERMISSIONS[state.currentUser.role].manageUsers) renderUsers();
 }
 
+// دوال فارغة للتوافق مع بقية الكود (كانت للسحابة)
+function startAutoSync() {}
+function stopAutoSync() {}
+async function syncData(silent = false) {
+  // في النظام المحلي، المزامنة تعني إعادة تحميل البيانات
+  await loadData();
+  renderAll();
+  if (!silent) toast('success', '✓ تم التحديث', `${state.products.length} منتج محفوظ`);
+}
+
 // ============================================================
-// SETUP SCREEN - شاشة إعداد السحابة
+// BACKUP & RESTORE - النسخ الاحتياطي والاستعادة
 // ============================================================
-function switchSetupTab(tab) {
-  document.querySelectorAll('.setup-tab').forEach(b => {
-    b.classList.remove('active');
-    b.style.background = 'transparent';
-    b.style.color = 'var(--gray-700)';
-    b.style.boxShadow = 'none';
+
+// ============================================================
+// SELECTION & EXPORT - التحديد والتصدير
+// ============================================================
+
+function toggleSelect(id) {
+  if (state.selectedIds.has(id)) {
+    state.selectedIds.delete(id);
+  } else {
+    state.selectedIds.add(id);
+  }
+  updateSelectionUI();
+}
+
+function toggleSelectAll() {
+  // أخذ المنتجات المعروضة حالياً (المفلترة)
+  const search = ($('#prodSearch')?.value || '').trim().toLowerCase();
+  const visibleIds = state.products.filter(p => {
+    if (search && !p.name.toLowerCase().includes(search) && !p.sku.toLowerCase().includes(search) && !(p.color || '').toLowerCase().includes(search)) return false;
+    if (state.prodFilter === 'all') return true;
+    const [type, val] = state.prodFilter.split(':');
+    if (type === 'invType') return p.invType === val;
+    if (type === 'cat') return p.category === val;
+    return true;
+  }).map(p => p.id);
+
+  const allSelected = visibleIds.every(id => state.selectedIds.has(id));
+  if (allSelected) {
+    // إلغاء التحديد
+    visibleIds.forEach(id => state.selectedIds.delete(id));
+  } else {
+    // تحديد الكل
+    visibleIds.forEach(id => state.selectedIds.add(id));
+  }
+  renderProducts();
+  updateSelectionUI();
+}
+
+function clearSelection() {
+  state.selectedIds.clear();
+  renderProducts();
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const count = state.selectedIds.size;
+  const bar = $('#selectionBar');
+  const countEl = $('#selectionCount');
+  const btnText = $('#selectAllBtn');
+
+  if (count > 0) {
+    bar.classList.add('show');
+    countEl.textContent = count;
+  } else {
+    bar.classList.remove('show');
+  }
+
+  // تحديث زر تحديد الكل
+  if (btnText) {
+    const search = ($('#prodSearch')?.value || '').trim().toLowerCase();
+    const visibleIds = state.products.filter(p => {
+      if (search && !p.name.toLowerCase().includes(search) && !p.sku.toLowerCase().includes(search) && !(p.color || '').toLowerCase().includes(search)) return false;
+      if (state.prodFilter === 'all') return true;
+      const [type, val] = state.prodFilter.split(':');
+      if (type === 'invType') return p.invType === val;
+      if (type === 'cat') return p.category === val;
+      return true;
+    }).map(p => p.id);
+
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => state.selectedIds.has(id));
+    btnText.innerHTML = allSelected
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg> إلغاء تحديد الكل'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> تحديد الكل';
+  }
+}
+
+// ============================================================
+// EXPORT SELECTED TO EXCEL - تصدير المحدد إلى Excel
+// ============================================================
+function exportSelectedExcel() {
+  const selected = state.products.filter(p => state.selectedIds.has(p.id));
+  if (selected.length === 0) {
+    toast('warning', 'لا يوجد منتجات محددة', 'اختر منتجاً على الأقل للتصدير');
+    return;
+  }
+
+  // بناء ورقة التفاصيل
+  const rows = selected.map((p, i) => {
+    const row = {
+      'م': i + 1,
+      'رقم SKU': p.sku,
+      'اسم المنتج': p.name,
+      'اللون': p.color || '—',
+      'الفئة': CATEGORY_LABELS[p.category],
+      'نوع الجرد': p.invType === 'new' ? 'منتج جديد' : 'موجود مسبقاً',
+      'التصنيف': p.productType ? PRODUCT_TYPE_LABELS[p.productType] : '—',
+      'السعر (ر.س)': p.price,
+      'الكمية': p.totalQty,
+      'القيمة الإجمالية (ر.س)': p.price * p.totalQty,
+      'المقاسات': p.hasSizes === false
+        ? `بدون مقاسات`
+        : Object.entries(p.sizes || {}).map(([s,q]) => `${s}:${q}`).join(' | '),
+      'ملاحظات': p.notes || '',
+      'تاريخ الإدخال': fmtDate(p.createdAt),
+      'الوقت': fmtTime(p.createdAt),
+      'أُضيف بواسطة': p.createdBy
+    };
+    SIZES.forEach(s => {
+      row[`مقاس ${s}`] = (p.hasSizes === false) ? '—' : (p.sizes?.[s] || 0);
+    });
+    return row;
   });
-  const activeBtn = document.querySelector(`.setup-tab[data-tab="${tab}"]`);
-  activeBtn.classList.add('active');
-  activeBtn.style.background = 'white';
-  activeBtn.style.color = 'var(--primary)';
-  activeBtn.style.boxShadow = 'var(--shadow-xs)';
 
-  $('#setupNew').style.display = tab === 'new' ? 'block' : 'none';
-  $('#setupExisting').style.display = tab === 'existing' ? 'block' : 'none';
-  $('#setupSuccess').style.display = 'none';
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = Object.keys(rows[0]).map(k => ({
+    wch: k === 'اسم المنتج' ? 28 : k === 'المقاسات' ? 26 : k === 'ملاحظات' ? 20 : 13
+  }));
+
+  // ورقة الملخص
+  const totalQty = selected.reduce((s, p) => s + p.totalQty, 0);
+  const totalValue = selected.reduce((s, p) => s + p.price * p.totalQty, 0);
+  const categories = {};
+  selected.forEach(p => { categories[p.category] = (categories[p.category] || 0) + 1; });
+
+  const summary = [
+    { 'البيان': 'تقرير جرد منتجات محددة', 'القيمة': '' },
+    { 'البيان': '—', 'القيمة': '—' },
+    { 'البيان': 'عدد المنتجات المصدّرة', 'القيمة': selected.length },
+    { 'البيان': 'إجمالي القطع', 'القيمة': totalQty },
+    { 'البيان': 'القيمة الإجمالية (ر.س)', 'القيمة': totalValue },
+    { 'البيان': '—', 'القيمة': '—' },
+    ...Object.entries(categories).map(([cat, cnt]) => ({
+      'البيان': `• ${CATEGORY_LABELS[cat]}`,
+      'القيمة': `${cnt} منتج`
+    })),
+    { 'البيان': '—', 'القيمة': '—' },
+    { 'البيان': 'تاريخ التقرير', 'القيمة': new Date().toLocaleString('ar-SA') },
+    { 'البيان': 'أُعدّ بواسطة', 'القيمة': state.currentUser.fullName }
+  ];
+  const sumWs = XLSX.utils.json_to_sheet(summary);
+  sumWs['!cols'] = [{ wch: 32 }, { wch: 24 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sumWs, 'ملخص');
+  XLSX.utils.book_append_sheet(wb, ws, 'تفاصيل المنتجات');
+
+  const ts = new Date().toISOString().slice(0, 10);
+  const fileName = `ProBench-جرد-محدد-${selected.length}منتج-${ts}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  toast('success', '✓ تم التصدير', `${selected.length} منتج → ${fileName}`);
+  logActivity('edit', `صدّر ${selected.length} منتج محدد إلى Excel`);
 }
 
-async function setupCreateStore() {
-  const btn = $('#btnCreateStore');
-  btn.disabled = true;
-  const orig = btn.innerHTML;
-  btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;"></div> جاري الإنشاء...';
-
-  try {
-    const binId = await STORAGE.createBin();
-    $('#newBinIdDisplay').value = binId;
-    $('#setupSuccess').style.display = 'block';
-    $('#setupNew').style.display = 'none';
-    $('#setupExisting').style.display = 'none';
-    document.querySelectorAll('.setup-tab').forEach(b => b.style.pointerEvents = 'none');
-    toast('success', '🎉 تم الإنشاء', 'متجرك السحابي جاهز — احفظ الرمز');
-  } catch (e) {
-    toast('error', 'فشل الإنشاء', 'تحقق من الاتصال بالإنترنت وحاول مرة أخرى');
-    btn.disabled = false;
-    btn.innerHTML = orig;
-  }
-}
-
-async function setupLinkStore() {
-  const binId = $('#existingBinId').value.trim();
-  if (!binId || binId.length < 10) {
-    toast('warning', 'رمز غير صحيح', 'الرجاء إدخال رمز المتجر كاملاً');
+// ============================================================
+// EXPORT SELECTED TO PDF - تصدير المحدد إلى PDF
+// ============================================================
+function exportSelectedPDF() {
+  const selected = state.products.filter(p => state.selectedIds.has(p.id));
+  if (selected.length === 0) {
+    toast('warning', 'لا يوجد منتجات محددة', 'اختر منتجاً على الأقل للتصدير');
     return;
   }
-  const btn = $('#btnLinkStore');
-  btn.disabled = true;
-  const orig = btn.innerHTML;
-  btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite;"></div> جاري الربط...';
 
   try {
-    // اختبار الاتصال: جلب البيانات
-    STORAGE.setBinId(binId);
-    const data = await STORAGE.getAll();
-    if (!data || typeof data !== 'object') throw new Error('invalid data');
-    // ربط ناجح
-    toast('success', '✓ تم الربط', `تم العثور على ${data.products?.length || 0} منتج`);
-    setTimeout(() => proceedToLogin(), 800);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // الصفحة الأولى - رأس الصفحة
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // خلفية الرأس
+    doc.setFillColor(15, 23, 41); // dark
+    doc.rect(0, 0, pageWidth, 32, 'F');
+
+    // شريط برتقالي
+    doc.setFillColor(238, 122, 42); // accent
+    doc.rect(0, 32, pageWidth, 2, 'F');
+
+    // عنوان ProBench
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('ProBench', 14, 17);
+
+    doc.setFontSize(10);
+    doc.setTextColor(180, 186, 201);
+    doc.text('Inventory Report', 14, 25);
+
+    // معلومات التقرير على اليمين
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    const reportDate = new Date().toLocaleString('en-GB');
+    doc.text(`Date: ${reportDate}`, pageWidth - 14, 13, { align: 'right' });
+    doc.text(`By: ${state.currentUser.fullName}`, pageWidth - 14, 19, { align: 'right' });
+    doc.text(`Items: ${selected.length}`, pageWidth - 14, 25, { align: 'right' });
+
+    // ملخص سريع
+    const totalQty = selected.reduce((s, p) => s + p.totalQty, 0);
+    const totalValue = selected.reduce((s, p) => s + p.price * p.totalQty, 0);
+
+    doc.setFillColor(249, 250, 252);
+    doc.rect(10, 40, pageWidth - 20, 18, 'F');
+    doc.setDrawColor(232, 235, 241);
+    doc.rect(10, 40, pageWidth - 20, 18, 'S');
+
+    doc.setTextColor(74, 82, 104);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
+    const boxes = [
+      { label: 'Total Products', value: String(selected.length) },
+      { label: 'Total Quantity', value: String(totalQty) },
+      { label: 'Total Value (SAR)', value: totalValue.toLocaleString('en-US') }
+    ];
+    const boxW = (pageWidth - 20) / boxes.length;
+    boxes.forEach((b, i) => {
+      const x = 10 + i * boxW;
+      doc.setTextColor(139, 147, 168);
+      doc.setFontSize(8);
+      doc.text(b.label, x + boxW / 2, 47, { align: 'center' });
+      doc.setTextColor(15, 23, 41);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(b.value, x + boxW / 2, 54, { align: 'center' });
+    });
+
+    // جدول المنتجات
+    const body = selected.map((p, i) => [
+      String(i + 1),
+      p.sku,
+      p.name,
+      p.color || '-',
+      CATEGORY_LABELS[p.category],
+      p.hasSizes === false
+        ? `No sizes (${p.totalQty})`
+        : Object.entries(p.sizes || {}).map(([s, q]) => `${s}:${q}`).join(', '),
+      String(p.totalQty),
+      p.price.toLocaleString('en-US'),
+      (p.price * p.totalQty).toLocaleString('en-US')
+    ]);
+
+    doc.autoTable({
+      startY: 64,
+      head: [['#', 'SKU', 'Product Name', 'Color', 'Category', 'Sizes & Qty', 'Total Qty', 'Price', 'Value']],
+      body: body,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [59, 130, 196],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 9,
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: [45, 52, 71]
+      },
+      alternateRowStyles: {
+        fillColor: [249, 250, 252]
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { cellWidth: 26, font: 'courier', fontSize: 7 },
+        2: { cellWidth: 55 },
+        3: { halign: 'center', cellWidth: 20 },
+        4: { halign: 'center', cellWidth: 25 },
+        5: { cellWidth: 50, fontSize: 7 },
+        6: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+        7: { halign: 'right', cellWidth: 22 },
+        8: { halign: 'right', cellWidth: 26, fontStyle: 'bold', textColor: [238, 122, 42] }
+      },
+      margin: { top: 35, left: 10, right: 10 },
+      didDrawPage: (data) => {
+        // Footer
+        const pageNumber = doc.internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(139, 147, 168);
+        doc.text(
+          `ProBench - Page ${data.pageNumber} of ${pageNumber}`,
+          pageWidth / 2,
+          pageHeight - 8,
+          { align: 'center' }
+        );
+      }
+    });
+
+    // حفظ الملف
+    const ts = new Date().toISOString().slice(0, 10);
+    const fileName = `ProBench-Report-${selected.length}items-${ts}.pdf`;
+    doc.save(fileName);
+
+    toast('success', '✓ تم التصدير', `${selected.length} منتج → ${fileName}`);
+    logActivity('edit', `صدّر ${selected.length} منتج محدد إلى PDF`);
   } catch (e) {
-    // فشل: أزل الـ bin id المحفوظ
-    localStorage.removeItem(LS_KEYS.binId);
-    toast('error', 'رمز غير موجود', 'تحقق من الرمز وحاول مرة أخرى');
-    btn.disabled = false;
-    btn.innerHTML = orig;
+    console.error('PDF export failed:', e);
+    toast('error', 'فشل إنشاء PDF', e.message || 'خطأ غير متوقع');
   }
 }
 
-function copyBinId() {
-  const inp = $('#newBinIdDisplay');
-  inp.select();
-  try {
-    navigator.clipboard.writeText(inp.value);
-    toast('success', '✓ تم النسخ', 'الرمز نُسخ إلى الحافظة');
-  } catch {
-    document.execCommand('copy');
-    toast('success', '✓ تم النسخ', 'الرمز نُسخ إلى الحافظة');
-  }
-}
+function openBackupModal() {
+  const lastSync = new Date().toLocaleString('ar-SA');
+  const dataSize = new Blob([JSON.stringify({
+    users: state.users,
+    products: state.products,
+    activity: state.activity
+  })]).size;
+  const sizeKB = (dataSize / 1024).toFixed(1);
 
-async function proceedToLogin() {
-  $('#setupScreen').style.display = 'none';
-  $('#loginScreen').style.display = 'flex';
-  // تحميل البيانات
-  try { await loadData(); } catch {}
-}
-
-// زر في الشريط العلوي لعرض/نسخ Bin ID
-function showBinInfo() {
-  const binId = STORAGE.getBinId();
-  if (!binId) {
-    toast('warning', 'لا يوجد متجر سحابي', 'لم يتم الإعداد بعد');
-    return;
-  }
   $('#productModalBody').innerHTML = `
-    <div style="text-align:center;padding:10px;">
-      <div style="font-size:32px;margin-bottom:8px;">☁️</div>
-      <h3 style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:4px;">معلومات المتجر السحابي</h3>
-      <p style="font-size:12px;color:var(--gray-500);margin-bottom:18px;">هذا الرمز يربط أجهزتك بنفس البيانات</p>
+    <div style="text-align:center;padding:10px 10px 20px;">
+      <div style="font-size:36px;margin-bottom:8px;">💾</div>
+      <h3 style="font-size:17px;font-weight:800;color:var(--dark);margin-bottom:4px;">النسخ الاحتياطي</h3>
+      <p style="font-size:12px;color:var(--gray-500);">احفظ بياناتك أو استعد نسخة سابقة</p>
     </div>
-    <div class="input-group">
-      <label class="input-label">رمز المتجر</label>
-      <div style="display:flex;gap:6px;">
-        <input type="text" id="binInfoId" readonly value="${binId}" style="flex:1;padding:10px 12px;border:1.5px solid var(--gray-300);border-radius:8px;font-family:monospace;font-size:12px;font-weight:700;background:var(--gray-50);color:var(--dark);text-align:center;">
-        <button type="button" class="btn btn-primary" onclick="
-          const i = document.getElementById('binInfoId'); i.select();
-          navigator.clipboard.writeText(i.value).then(() => toast('success','✓ تم النسخ','الرمز جاهز'));
-        " style="padding:10px 14px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        </button>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;">
+      <div style="background:var(--primary-50);padding:12px 8px;border-radius:10px;text-align:center;">
+        <div style="font-size:20px;font-weight:900;color:var(--primary-dark);">${state.products.length}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--primary-dark);">منتج</div>
+      </div>
+      <div style="background:var(--accent-50);padding:12px 8px;border-radius:10px;text-align:center;">
+        <div style="font-size:20px;font-weight:900;color:var(--accent-dark);">${state.users.length}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--accent-dark);">مستخدم</div>
+      </div>
+      <div style="background:var(--success-bg);padding:12px 8px;border-radius:10px;text-align:center;">
+        <div style="font-size:20px;font-weight:900;color:#065F46;">${sizeKB}</div>
+        <div style="font-size:10px;font-weight:700;color:#065F46;">كيلوبايت</div>
       </div>
     </div>
-    <div class="notice info" style="margin-top:14px;">
+
+    <!-- تصدير -->
+    <div style="background:var(--gray-50);padding:14px;border-radius:12px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:800;color:var(--dark);font-size:14px;">تصدير نسخة احتياطية</div>
+          <div style="font-size:11px;color:var(--gray-500);">ملف JSON يحوي كل بياناتك</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="exportBackup()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        تنزيل النسخة الاحتياطية الآن
+      </button>
+    </div>
+
+    <!-- استيراد -->
+    <div style="background:var(--gray-50);padding:14px;border-radius:12px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:800;color:var(--dark);font-size:14px;">استيراد نسخة احتياطية</div>
+          <div style="font-size:11px;color:var(--gray-500);">تحميل بيانات من ملف JSON</div>
+        </div>
+      </div>
+      <input type="file" id="backupFileInput" accept=".json,application/json" style="display:none;" onchange="importBackup(event)">
+      <button class="btn btn-accent btn-block" onclick="document.getElementById('backupFileInput').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        اختيار ملف النسخة الاحتياطية
+      </button>
+    </div>
+
+    <div class="notice info" style="margin-top:12px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-      <div>لربط جهاز آخر: افتح النظام على الجهاز الجديد واختر "ربط متجر موجود" ثم الصق هذا الرمز.</div>
+      <div><b>للنقل بين الأجهزة:</b> صدّر من الجهاز الأول، أرسل الملف (WhatsApp/Email) للجهاز الثاني، ثم استورده هناك.</div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:16px;">
-      <button class="btn btn-outline" style="flex:1;" onclick="closeProductModal()">إغلاق</button>
-      <button class="btn btn-danger" style="flex:1;" onclick="
-        closeProductModal();
-        confirmDialog('فصل المتجر','سيتم فصل هذا الجهاز عن المتجر السحابي. البيانات السحابية لن تُحذف.',async ()=>{
-          localStorage.removeItem('pb_bin_id');
-          localStorage.removeItem('pb_data_v4');
-          location.reload();
-        },'فصل');
-      ">فصل الجهاز</button>
-    </div>
+
+    <button class="btn btn-outline btn-block" style="margin-top:12px;" onclick="closeProductModal()">إغلاق</button>
   `;
   $('#productModal').classList.add('active');
 }
 
+function exportBackup() {
+  const backup = {
+    version: '5.0',
+    app: 'ProBench',
+    exportedAt: new Date().toISOString(),
+    exportedBy: state.currentUser?.fullName || 'غير معروف',
+    data: {
+      users: state.users,
+      products: state.products,
+      activity: state.activity
+    }
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.download = `ProBench-backup-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('success', '✓ تم التصدير', `تم تنزيل النسخة الاحتياطية (${state.products.length} منتج)`);
+  logActivity('edit', `صدّر نسخة احتياطية (${state.products.length} منتج)`);
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      // التحقق من صحة الملف
+      if (!backup.data || !Array.isArray(backup.data.products)) {
+        throw new Error('ملف غير صالح');
+      }
+      const incomingProducts = backup.data.products.length;
+      const incomingUsers = (backup.data.users || []).length;
+      closeProductModal();
+      // سؤال عن طريقة الاستيراد
+      $('#productModalBody').innerHTML = `
+        <div style="text-align:center;padding:10px;">
+          <div style="font-size:36px;margin-bottom:8px;">📥</div>
+          <h3 style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:4px;">استيراد النسخة الاحتياطية</h3>
+          <p style="font-size:12px;color:var(--gray-500);margin-bottom:16px;">
+            الملف يحتوي <b>${incomingProducts}</b> منتج و <b>${incomingUsers}</b> مستخدم
+          </p>
+        </div>
+        <div class="notice warning" style="margin-bottom:14px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>اختر طريقة الاستيراد:</div>
+        </div>
+        <button class="btn btn-accent btn-block" onclick="doImportMerge()" style="margin-bottom:8px;">
+          🔀 دمج مع البيانات الحالية
+          <div style="font-size:10px;opacity:0.9;margin-top:2px;">إضافة منتجات جديدة والاحتفاظ بالحالية</div>
+        </button>
+        <button class="btn btn-danger btn-block" onclick="doImportReplace()" style="margin-bottom:8px;">
+          🔄 استبدال كامل
+          <div style="font-size:10px;opacity:0.9;margin-top:2px;">حذف الحالية واستبدالها بالمستوردة</div>
+        </button>
+        <button class="btn btn-outline btn-block" onclick="closeProductModal()">إلغاء</button>
+      `;
+      // حفظ البيانات المستوردة مؤقتاً
+      window._pendingImport = backup.data;
+      $('#productModal').classList.add('active');
+    } catch (err) {
+      toast('error', 'ملف غير صالح', 'الملف لا يطابق صيغة النسخ الاحتياطية لـ ProBench');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+async function doImportMerge() {
+  const incoming = window._pendingImport;
+  if (!incoming) return;
+
+  // دمج المنتجات بناءً على SKU — الاحتفاظ بالأحدث
+  const productMap = new Map(state.products.map(p => [p.sku, p]));
+  let added = 0, updated = 0;
+  (incoming.products || []).forEach(p => {
+    const existing = productMap.get(p.sku);
+    if (!existing) {
+      productMap.set(p.sku, p);
+      added++;
+    } else {
+      // الاحتفاظ بالأحدث
+      const existingTime = existing.updatedAt || existing.createdAt || 0;
+      const incomingTime = p.updatedAt || p.createdAt || 0;
+      if (incomingTime > existingTime) {
+        productMap.set(p.sku, p);
+        updated++;
+      }
+    }
+  });
+
+  // دمج المستخدمين (فقط المستخدمين غير الموجودين)
+  const usernameSet = new Set(state.users.map(u => u.username));
+  let usersAdded = 0;
+  (incoming.users || []).forEach(u => {
+    if (!usernameSet.has(u.username)) {
+      state.users.push(u);
+      usersAdded++;
+    }
+  });
+
+  state.products = Array.from(productMap.values()).sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+  await saveToCloud();
+  await logActivity('edit', `استورد نسخة احتياطية (دمج): +${added} منتج، تحديث ${updated}`);
+  closeProductModal();
+  delete window._pendingImport;
+  renderAll();
+  toast('success', '✓ تم الدمج', `أضيف ${added} منتج، حُدّث ${updated}، ${usersAdded} مستخدم جديد`);
+}
+
+async function doImportReplace() {
+  confirmDialog(
+    'استبدال كامل',
+    'سيتم حذف كل البيانات الحالية واستبدالها بالمستوردة. هل أنت متأكد؟',
+    async () => {
+      const incoming = window._pendingImport;
+      if (!incoming) return;
+      state.products = incoming.products || [];
+      // الاحتفاظ بالمستخدم الحالي في القائمة حتى لا يخسر دخوله
+      const currentUserInImport = (incoming.users || []).find(u => u.id === state.currentUser?.id);
+      if (currentUserInImport) {
+        state.users = incoming.users;
+      } else {
+        state.users = [...(incoming.users || []), state.currentUser].filter(Boolean);
+      }
+      state.activity = incoming.activity || [];
+      await saveToCloud();
+      await logActivity('edit', `استورد نسخة احتياطية (استبدال): ${state.products.length} منتج`);
+      closeProductModal();
+      delete window._pendingImport;
+      renderAll();
+      toast('success', '✓ تم الاستبدال', `${state.products.length} منتج محمّل`);
+    },
+    'استبدال'
+  );
+}
+
+// ============================================================
+// INIT - التهيئة
+// ============================================================
 async function init() {
   buildSizes();
   buildPriceChips();
   buildColorChips();
 
-  // التحقق من وجود متجر سحابي
-  const hasBin = STORAGE.hasBin();
-
-  if (hasBin) {
-    // تحميل البيانات من السحابة
-    try {
-      await loadData();
-    } catch (e) {
-      console.error('Load failed:', e);
-      state.users = [...DEFAULT_USERS];
-      state.products = [];
-      state.activity = [];
-    }
+  // تحميل البيانات من localStorage
+  try {
+    await loadData();
+  } catch (e) {
+    console.error('Load failed:', e);
+    state.users = [...DEFAULT_USERS];
+    state.products = [];
+    state.activity = [];
   }
 
-  // إخفاء شاشة التحميل وإظهار الشاشة المناسبة
+  // إخفاء شاشة التحميل وإظهار شاشة الدخول
   setTimeout(() => {
     $('#loaderScreen').classList.add('hide');
-    if (hasBin) {
-      $('#loginScreen').style.display = 'flex';
-    } else {
-      $('#setupScreen').style.display = 'flex';
-    }
+    $('#loginScreen').style.display = 'flex';
     setTimeout(() => $('#loaderScreen').remove(), 400);
   }, 600);
 }
